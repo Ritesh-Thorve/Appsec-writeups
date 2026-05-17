@@ -1,22 +1,30 @@
-# JavaScript AST Deobfuscation Writeup
+# JavaScript AST Deobfuscation — CTF Writeup
+
+> **Category:** Reverse Engineering  
+> **Difficulty:** Easy  
+> **Flag:** `g00d_j0b_easy_deobfuscation`
+
+---
 
 ## Introduction
 
-This challenge was a simple JavaScript reverse engineering and deobfuscation task using an **AST (Abstract Syntax Tree)** instead of normal JavaScript source code.
+This challenge was a JavaScript reverse engineering and deobfuscation task — with a twist. Instead of raw JavaScript source code, the target was provided as an **Abstract Syntax Tree (AST)**. The goal was to manually parse the AST, reconstruct the logic, and recover the hidden strings.
 
-The goal was to analyze the AST manually, understand how the code works, and recover the hidden strings.
+---
 
-## What is an AST?
+## What Is an AST?
 
-An **Abstract Syntax Tree (AST)** is a tree representation of source code.
+An **Abstract Syntax Tree (AST)** is a tree-shaped data structure that represents the syntactic structure of source code. Parsers generate ASTs internally when compiling or interpreting code.
 
 Instead of storing code as plain text:
 
-```javascript
+```js
 let a = 5 + 3;
-the parser converts it into structured objects like:
+```
 
-json
+The parser converts it into structured objects:
+
+```json
 {
   "type": "VariableDeclaration",
   "declarations": [
@@ -31,116 +39,142 @@ json
     }
   ]
 }
-Why ASTs Are Used
-ASTs are heavily used in:
+```
 
-JavaScript parsers
+### Why Are ASTs Used?
 
-Babel
+ASTs are central to many tools in the JavaScript ecosystem:
 
-ESLint
+| Tool / Domain         | Use of AST                          |
+|-----------------------|--------------------------------------|
+| Babel                 | Transpilation (ES6+ → ES5)           |
+| ESLint                | Static code analysis & linting       |
+| Minifiers / Uglifiers | Code size reduction                  |
+| Compilers             | Code generation & optimization       |
+| **Malware / CTFs**    | **Obfuscation to hinder analysis**   |
 
-Minifiers/Uglifiers
+ASTs allow tools to analyze code structure, transform logic automatically, detect vulnerabilities, and — critically for this challenge — obfuscate intent.
 
-Compilers
+> In CTF and malware analysis contexts, attackers sometimes distribute *only* the AST output to make static analysis significantly harder.
 
-Malware obfuscation
+---
 
-Reverse engineering challenges
+## Challenge Analysis
 
-ASTs allow tools to:
+The provided file is a JavaScript AST object. At the bottom of the AST, we can identify the entry point:
 
-Analyze code structure
-
-Transform code automatically
-
-Obfuscate logic
-
-Detect vulnerabilities
-
-Optimize programs
-
-In CTFs and malware analysis, attackers sometimes provide only AST output to make reverse engineering harder.
-
-Challenge Analysis
-The file contains a JavaScript AST object. At the bottom we can see:
-
-javascript
+```js
 let sensor = gen_sensor()
 console.log(sensor)
-So our target is the gen_sensor() function.
+```
 
-Part 1 — Hidden String
-The challenge starts with an immediately invoked function:
+**Target:** Reverse-engineer `gen_sensor()` to recover the hidden value.
 
-javascript
+---
+
+## Part 1 — Hidden String (Warm-Up)
+
+The challenge opens with an **Immediately Invoked Function Expression (IIFE)**:
+
+```js
 (() => {
-    let d = [1856,1824,1776,1728,1776,1728,1776]
+    let d = [1856, 1824, 1776, 1728, 1776, 1728, 1776]
     d = d.map(c => String.fromCharCode(c >> 4))
     console.log(d)
 })()
-Understanding the Logic
-Each number is shifted right by 4 bits:
+```
 
-1856 >> 4 = 116 (ASCII 116 = t)
+### Understanding the Logic
 
-Doing this for all values:
+Each integer is **right-shifted by 4 bits** (`>> 4`), then converted to its ASCII character:
 
-Value	Shifted	ASCII
-1856	116	t
-1824	114	r
-1776	111	o
-1728	108	l
-1776	111	o
-1728	108	l
-1776	111	o
-Final output: trololo
+| Value  | `>> 4` | ASCII | Char |
+|--------|--------|-------|------|
+| `1856` | `116`  | 116   | `t`  |
+| `1824` | `114`  | 114   | `r`  |
+| `1776` | `111`  | 111   | `o`  |
+| `1728` | `108`  | 108   | `l`  |
+| `1776` | `111`  | 111   | `o`  |
+| `1728` | `108`  | 108   | `l`  |
+| `1776` | `111`  | 111   | `o`  |
 
-Part 2 — The gen_sensor() Function
-Step 1 — Generating the Key
-Inside gen_sensor():
+**Result:** `trololo`
 
-javascript
-let sens = [10]+[45]+[65]+[78]+[47]
-JavaScript converts arrays into strings during concatenation:
+---
 
-"10" + "45" + "65" + "78" + "47"
+## Part 2 — Reversing `gen_sensor()`
 
-Result: 1045657847
+### Step 1 — Key Generation via Array Concatenation
 
-Step 2 — Bit Shift Operation
-Next:
+Inside `gen_sensor()`, the key is built as:
 
-javascript
+```js
+let sens = [10] + [45] + [65] + [78] + [47]
+```
+
+In JavaScript, adding arrays coerces them to strings, effectively joining their elements:
+
+```
+"10" + "45" + "65" + "78" + "47" = "1045657847"
+```
+
+Parsed as a number: **`1045657847`**
+
+### Step 2 — Bit Shift to Derive XOR Key
+
+```js
 sens >>= 4
-This means: 1045657847 >> 4
+```
 
-Result: 65353615 (This becomes the XOR key)
+This right-shifts the value by 4 bits:
 
-Part 3 — Decoding the Sensor Array
-The challenge contains a large integer array:
+```
+1045657847 >> 4 = 65353615
+```
 
-javascript
-[
-  65353704,
-  65353663,
-  // ... more values
-]
-Each number is decoded using:
+**XOR key:** `65353615`
 
-javascript
+---
+
+## Part 3 — Decoding the Sensor Array
+
+The AST encodes a large array of integers. Each element is decoded with:
+
+```js
 String.fromCharCode(c ^ sens)
-where sens = 65353615
+```
 
-XOR Decryption
-Example:
+### Example Decryption
 
+```
 65353704 ^ 65353615 = 103
+ASCII(103) = 'g'
+```
 
-ASCII 103 = g
+Applying this XOR operation across every element in the array reconstructs the hidden message character by character.
 
-Repeating this for every element reveals the hidden message.
+---
 
-Final Decoded String
-text
+## 🏁 Flag
+
+```
 g00d_j0b_easy_deobfuscation
+```
+
+---
+
+## Tools & Concepts Used
+
+- **Bit manipulation:** right-shift (`>>`) and XOR (`^`) operators
+- **JavaScript type coercion:** array-to-string implicit conversion
+- **ASCII / `String.fromCharCode()`:** character decoding
+- **AST analysis:** manual traversal and logic reconstruction
+
+---
+
+## Further Reading
+
+- [AST Explorer](https://astexplorer.net/) — Visualize and explore ASTs interactively
+- [Babel Plugin Handbook](https://github.com/jamiebuilds/babel-handbook) — Deep dive into AST transformations
+- [javascript-obfuscator](https://github.com/javascript-obfuscator/javascript-obfuscator) — Common obfuscation techniques
+- [MDN: Bitwise Operators](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Bitwise_AND)
