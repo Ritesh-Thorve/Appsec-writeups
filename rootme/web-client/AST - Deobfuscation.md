@@ -3,7 +3,7 @@
 > **Category:** Reverse Engineering  
 > **Difficulty:** Easy  
 > **Flag:** `g00d_j0b_easy_deobfuscation`
-> **Link** `[proof](https://www.root-me.org/?page=validation&id_challenge=3908&id_auteur=1089475&lang=en)`
+> [view](https://www.root-me.org/?page=validation&id_challenge=3908&id_auteur=1089475&lang=en)
 
 ---
 
