@@ -2,7 +2,7 @@
 
 ## Lab Overview
 
-:contentReference[oaicite:0]{index=0} `Dav` is an easy machine focused on:
+`Dav` is an easy machine focused on:
 
 - Basic enumeration
 - Discovering hidden directories
@@ -137,8 +137,6 @@ wampp:xampp
 Uploaded a PHP reverse shell payload.
 
 Used payload:
-
-:contentReference[oaicite:1]{index=1}
 
 Important modification:
 
