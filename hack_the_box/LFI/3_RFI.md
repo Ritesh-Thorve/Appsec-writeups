@@ -163,6 +163,8 @@ uid=33(www-data) gid=33(www-data)
 
 confirming Remote Code Execution.
 <img width="1154" height="703" alt="image" src="https://github.com/user-attachments/assets/cd4953b4-4ba0-45fb-ac64-aef471dbf626" />
+<img width="1123" height="697" alt="image" src="https://github.com/user-attachments/assets/06b909e4-e908-4853-a681-98fcc9d898d3" />
+
 
 ---
 
