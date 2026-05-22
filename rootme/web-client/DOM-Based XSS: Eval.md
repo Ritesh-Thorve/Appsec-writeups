@@ -1,5 +1,5 @@
 # DOM-Based XSS - `eval()` Injection
-[Root-Me Challenge proof](https://www.root-me.org/?page=validation%26id_challenge=2916%26id_auteur=1089475%26lang=en)
+[Root-Me Challenge proof](https://www.root-me.org/?page=validation&id_challenge=2916&id_auteur=1089475&lang=en)
 
 ## Lab Overview
 
