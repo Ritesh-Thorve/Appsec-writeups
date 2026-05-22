@@ -1,4 +1,5 @@
 # XSS DOM-Based - Introduction
+[Root-Me Challenge Proof](https://www.root-me.org/?page=validation&id_challenge=2914&id_auteur=1089475&lang=en)
 
 ## Lab Overview
 
