@@ -14,7 +14,6 @@ Main concepts learned:
 - Linux Privilege Escalation
 - Container Escape
 
-Source notes: :contentReference[oaicite:0]{index=0}
 
 ---
 
