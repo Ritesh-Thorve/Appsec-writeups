@@ -1,5 +1,7 @@
 # XSS Stored 2
 
+[Root-Me Challenge Proof](https://www.root-me.org/?page=validation&id_challenge=246&id_auteur=1089475&lang=en)
+
 ## Lab Overview
 
 This lab demonstrates a **Stored Cross-Site Scripting (XSS)** vulnerability through a hidden cookie parameter.
