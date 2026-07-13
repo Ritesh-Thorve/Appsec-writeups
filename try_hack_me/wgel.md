@@ -167,9 +167,8 @@ Visit:
 ```
 http://<TARGET_IP>/sitemap/.ssh/
 
-<img width="692" height="278" alt="image" src="https://github.com/user-attachments/assets/31ae7c47-1cda-44f9-b05d-64d3c4f86f6f" />
-
 ```
+<img width="692" height="278" alt="image" src="https://github.com/user-attachments/assets/31ae7c47-1cda-44f9-b05d-64d3c4f86f6f" />
 
 Download the exposed private key:
 
