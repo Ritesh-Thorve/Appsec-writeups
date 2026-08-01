@@ -390,19 +390,6 @@ Python Library Hijacking
       ▼
 morpheus
 ```
-
----
-
-# Tools Used
-
-- Nmap
-- FFUF
-- Netcat
-- SSH
-- MySQL Client
-- Python
-- Linux Utilities
-
 ---
 
 # Key Takeaways
@@ -433,6 +420,3 @@ It is an excellent room for practicing complete attack chains rather than isolat
 
 ---
 
-## Disclaimer
-
-This walkthrough was created for educational purposes while solving the **Dreaming** room on **TryHackMe**. All activities were performed in a legal lab environment.
